@@ -30,8 +30,8 @@ action :clone do
 end
 
 def clone
-  execute "clone repository #{new_resource.path}" do
-    command "hg clone #{hg_connection_command} #{new_resource.repository} #{new_resource.path}"
+  execute "clone repository #{new_resource.destination}" do
+    command "hg clone #{hg_connection_command} #{new_resource.repository} #{new_resource.destination}"
     user new_resource.owner
     group new_resource.group
   end
@@ -39,11 +39,11 @@ def clone
 end
 
 def sync
-  execute "pull #{new_resource.path}" do
+  execute "pull #{new_resource.destination}" do
     command "hg unbundle -u #{bundle_file}"
     user new_resource.owner
     group new_resource.group
-    cwd new_resource.path
+    cwd new_resource.destination
     only_if { ::File.exists?(bundle_file) || repo_incoming? }
     notifies :delete, "file[#{bundle_file}]"
   end
@@ -55,11 +55,11 @@ def sync
 end
 
 def update
-  execute "hg update for #{new_resource.path}" do
+  execute "hg update for #{new_resource.destination}" do
     command "hg update --rev #{new_resource.reference}"
     user new_resource.owner
     group new_resource.group
-    cwd new_resource.path
+    cwd new_resource.destination
   end
 end
 
@@ -67,7 +67,7 @@ def load_current_resource
   init
   @current_resource = Chef::Resource::Mercurial.new(@new_resource.name)
   @current_resource.name(@new_resource.name)
-  @current_resource.path(@new_resource.path)
+  @current_resource.path(@new_resource.destination)
   if repo_exists?
     @current_resource.exists = true
     @current_resource.synced = !repo_incoming?
@@ -75,14 +75,14 @@ def load_current_resource
 end
 
 def repo_exists?
-  command = Mixlib::ShellOut.new("hg identify #{new_resource.path}").run_command
-  Chef::Log.debug "'hg identify #{new_resource.path}' return #{command.stdout}"
+  command = Mixlib::ShellOut.new("hg identify #{new_resource.destination}").run_command
+  Chef::Log.debug "'hg identify #{new_resource.destination}' return #{command.stdout}"
   return command.exitstatus == 0
 end
 
 def repo_incoming?
   cmd = "hg incoming --rev #{new_resource.reference} #{hg_connection_command} --bundle #{bundle_file} #{new_resource.repository}"
-  command = Mixlib::ShellOut.new(cmd, :cwd => new_resource.path, :user => new_resource.owner, :group => new_resource.group).run_command
+  command = Mixlib::ShellOut.new(cmd, :cwd => new_resource.destination, :user => new_resource.owner, :group => new_resource.group).run_command
   Chef::Log.debug "#{cmd} return #{command.stdout}"
   return command.exitstatus == 0
 end
@@ -97,7 +97,7 @@ def init
 end
 
 def tmp_directory
-  ::File.join(Chef::Config[:file_cache_path], "mercurial", sanitize_filename(new_resource.path))
+  ::File.join(Chef::Config[:file_cache_path], "mercurial", sanitize_filename(new_resource.destination))
 end
 
 def bundle_file

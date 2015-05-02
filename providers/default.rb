@@ -32,7 +32,7 @@ end
 def clone
   execute "clone repository #{new_resource.destination}" do
     command "hg clone #{hg_connection_command} #{new_resource.repository} #{new_resource.destination}"
-    user new_resource.owner
+    user new_resource.user
     group new_resource.group
   end
   update
@@ -41,7 +41,7 @@ end
 def sync
   execute "pull #{new_resource.destination}" do
     command "hg unbundle -u #{bundle_file}"
-    user new_resource.owner
+    user new_resource.user
     group new_resource.group
     cwd new_resource.destination
     only_if { ::File.exists?(bundle_file) || repo_incoming? }
@@ -57,7 +57,7 @@ end
 def update
   execute "hg update for #{new_resource.destination}" do
     command "hg update --rev #{new_resource.reference}"
-    user new_resource.owner
+    user new_resource.user
     group new_resource.group
     cwd new_resource.destination
   end
@@ -82,14 +82,14 @@ end
 
 def repo_incoming?
   cmd = "hg incoming --rev #{new_resource.reference} #{hg_connection_command} --bundle #{bundle_file} #{new_resource.repository}"
-  command = Mixlib::ShellOut.new(cmd, :cwd => new_resource.destination, :user => new_resource.owner, :group => new_resource.group).run_command
+  command = Mixlib::ShellOut.new(cmd, :cwd => new_resource.destination, :user => new_resource.user, :group => new_resource.group).run_command
   Chef::Log.debug "#{cmd} return #{command.stdout}"
   return command.exitstatus == 0
 end
 
 def init
   directory tmp_directory do
-    owner new_resource.owner
+    user new_resource.user
     group new_resource.group
     recursive true
     mode 0755
